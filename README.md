@@ -4,3 +4,11 @@ A cross-platform command line midi-file player. Built using [midifile](https://g
 
 ## Compiling
 Compile using with preprocessor definitions found [here](https://www.music.mcgill.ca/~gary/rtmidi/index.html#compiling)
+
+## Usage
+```
+usage: midiplayer option inputfile.mid
+options:
+-l list midi out devices
+-p midi device out number
+```
