@@ -15,6 +15,7 @@ add_executable(midiplayer
         src/MidiEventList.cpp
         src/MidiFile.cpp
         src/MidiMessage.cpp
-        src/Instrument.cpp)
+        src/Instrument.cpp
+        src/swti.cpp)
 
 target_link_libraries(midiplayer winmm.lib)

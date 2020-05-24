@@ -5,13 +5,13 @@
 #include "RtMidi.h"
 #include "MidiFile.h"
 #include "Instrument.h"
+#include "swti.hpp"
 
 using namespace smf;
 //using namespace std;
 
 #if defined(WIN32)
 #include <windows.h>
-
 #define SLEEP( milliseconds ) Sleep( (DWORD) milliseconds )
 #else // Unix variants
 #include <unistd.h>
@@ -21,8 +21,8 @@ using namespace smf;
 void list_midi_out_devices(std::shared_ptr<RtMidiOut>& midiout);
 void print_message_type(const MidiEvent& event);
 
-int main(int argc, char* argv[]) {
 
+int main(int argc, char* argv[]) {
     if(argc < 3) {
         std::cout << "usage:\n"
         << "midiplayer option inputfile.mid\n"
