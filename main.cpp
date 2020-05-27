@@ -5,13 +5,13 @@
 #include "RtMidi.h"
 #include "MidiFile.h"
 #include "Instrument.h"
-#include "swti.hpp"
 
 using namespace smf;
 //using namespace std;
 
 #if defined(WIN32)
 #include <windows.h>
+#include "swti.hpp"
 #define SLEEP( milliseconds ) Sleep( (DWORD) milliseconds )
 #else // Unix variants
 #include <unistd.h>
@@ -21,14 +21,13 @@ using namespace smf;
 void list_midi_out_devices(std::shared_ptr<RtMidiOut>& midiout);
 void print_message_type(const MidiEvent& event);
 
-
 int main(int argc, char* argv[]) {
-    if(argc < 3) {
+    if(argc < 2) {
         std::cout << "usage:\n"
         << "midiplayer option inputfile.mid\n"
         << "options:\n"
         << " -l list midi devices\n"
-        << " -p midi device out number\n"
+        << " -p [port #] midi device out number\n"
         << std::endl;
 
         return 0;
@@ -69,13 +68,28 @@ int main(int argc, char* argv[]) {
     midifile.linkNotePairs();
     int tracks = midifile.getTrackCount();
 
+    // Set up for our loop
     std::vector<int> event(tracks);
     std::vector<bool> eot(tracks); // end of track
-
     std::chrono::time_point<std::chrono::system_clock> start, current;
     start = std::chrono::system_clock::now();
 
-    std::cout << "TICK\tTRACK#\tTYPE\tCMD\tARG1\tARG2\tCHANNEL\n";
+    int cursor_offset = 0;
+    Cursor.setPosition(0, 0 + cursor_offset);
+    Cursor.setColor(YELLOW);
+    std::cout << "TRACK NAME: ";
+    Cursor.setColor(BLUE);
+    std::cout << infile;
+    Cursor.setColor(YELLOW);
+    std::cout << " OUTPUT PORT: ";
+    Cursor.setColor(BLUE);
+    std::cout << midiout->getPortName(midiout_port);
+
+    Cursor.setPosition(0, 2);
+    Cursor.setColor(YELLOW);
+    std::cout << "TICK\tTRACK#\tTYPE\tCMD\tARG1\tARG2\tCHANNEL\t || \n";
+    Cursor.setColor(BLUE);
+    cursor_offset = 3;
 
     bool eof = false; // end of file
     while(!eof) {
@@ -91,6 +105,8 @@ int main(int argc, char* argv[]) {
         for(int track = 0; track < tracks; ++track) {
             if (event[track] < midifile[track].size()
             && midifile[track][event[track]].seconds <= elapsed_seconds.count()) {
+                Cursor.setPosition(0, track + cursor_offset);
+                Cursor.setColor((Color)((track % 15) + 1));
                 std::cout << midifile[track][event[track]].tick << '\t';
                 std::cout << "TRACK" << track << '\t';
                 print_message_type(midifile[track][event[track]]);
@@ -115,8 +131,20 @@ int main(int argc, char* argv[]) {
                     std::cout << "--\t";
                 }
 
-                std::cout << midifile[track][event[track]].getChannel() << '\n';
+                std::cout << midifile[track][event[track]].getChannel() << '\t';
+                std::cout << " || ";
 
+                // Print note names
+                if(midifile[track][event[track]].isNoteOn()) {
+                    Cursor.setPosition(Cursor.getX() + ((arg1-21) * 2), track + cursor_offset);
+                    std::string note_letter = "AaBCcDdEFfGg";
+                    std::cout << note_letter[(arg1-21) % 12] << (int)(((arg1-21)/12)+1);
+                } else if(midifile[track][event[track]].isNoteOff()) {
+                    Cursor.setPosition(Cursor.getX() + ((arg1-21) * 2), track + cursor_offset);
+                    std::cout << "  ";
+                }
+
+                // Send message
                 try {
                     midiout->sendMessage(&message);
                 } catch (RtMidiError &error) {
@@ -128,10 +156,13 @@ int main(int argc, char* argv[]) {
                 if(midifile[track][event[track]].isEndOfTrack()) eot[track] = true;
 
                 ++event[track];
+                Cursor.setPosition(0, tracks+cursor_offset);
             }
         }
     }
+    Cursor.setPosition(0, tracks + cursor_offset);
     std::cout << "End of File\n";
+    Cursor.setColor(WHITE);
     return 0;
 }
 
@@ -168,4 +199,11 @@ void print_message_type(const MidiEvent& event) {
 
     if(event.isEndOfTrack()) std::cout << "EOT\t";
     else if(event.isMeta()) std::cout << "META\t";
+}
+
+void print_notes(const MidiEvent& event) {
+    if(event.isNoteOn()) {
+
+    }
+
 }
