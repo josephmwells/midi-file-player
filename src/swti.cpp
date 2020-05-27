@@ -952,7 +952,7 @@ bool SWTI_Window::hideScrollbars()
 bool SWTI_Window::setTitle(std::string title)
 {
   // use custom strlpc function that converts and prepares string
-  BOOL result = SetConsoleTitle(strlpc(title).c_str());
+  BOOL result = SetConsoleTitle(title.c_str());
   SWTI_PERR(result, "Window.setTitle", "SetConsoleTitle");
   return result;
 }
