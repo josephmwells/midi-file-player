@@ -71,11 +71,16 @@ int main(int argc, char* argv[]) {
     // Set up for our loop
     std::vector<int> event(tracks);
     std::vector<bool> eot(tracks); // end of track
+    std::vector<std::string> track_name(tracks);
     std::chrono::time_point<std::chrono::system_clock> start, current;
     start = std::chrono::system_clock::now();
 
-    int cursor_offset = 0;
-    Cursor.setPosition(0, 0 + cursor_offset);
+    // Set the window size to fit all of our info
+    Window.setSizeChars(75 + (127 - 21) * 2, 5 + tracks); // x = header size + notes size
+
+    // Begin printing header info and track info
+    int cursor_offset = 0; // This is just for spacing and formatting
+    Cursor.setPosition( 0, 0 + cursor_offset);
     Cursor.setColor(YELLOW);
     std::cout << "TRACK NAME: ";
     Cursor.setColor(BLUE);
@@ -87,7 +92,7 @@ int main(int argc, char* argv[]) {
 
     Cursor.setPosition(0, 2);
     Cursor.setColor(YELLOW);
-    std::cout << "TICK\tTRACK#\tTYPE\tCMD\tARG1\tARG2\tCHANNEL\t || \n";
+    std::cout << "TICK\tTRACK#\tNAME\t\tTYPE\tCMD\tARG1\tARG2\tCHANNEL\t || \n";
     Cursor.setColor(BLUE);
     cursor_offset = 3;
 
@@ -99,9 +104,12 @@ int main(int argc, char* argv[]) {
             eof = eof && eot[track];
         }
 
+        // Check elapsed time
         current = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = current - start;
 
+        // If there is an unprocessed event and its time to process it
+        // Run all of this stuff
         for(int track = 0; track < tracks; ++track) {
             if (event[track] < midifile[track].size()
             && midifile[track][event[track]].seconds <= elapsed_seconds.count()) {
@@ -109,14 +117,34 @@ int main(int argc, char* argv[]) {
                 Cursor.setColor((Color)((track % 15) + 1));
                 std::cout << midifile[track][event[track]].tick << '\t';
                 std::cout << "TRACK" << track << '\t';
+
+                // Get track name and print it properly
+                if(midifile[track][event[track]].isTrackName()) {
+                    track_name[track] = midifile[track][event[track]].getMetaContent();
+                    if(track_name[track].length() > 15)
+                        track_name[track] = track_name[track].substr(0, 15);
+                }
+                std::cout << track_name[track];
+                if(track_name[track].length() < 8) std::cout << "\t\t";
+                else if(track_name[track].length() < 16) std::cout << '\t';
+
+                // Print the message type
                 print_message_type(midifile[track][event[track]]);
 
+                // The way RTMidi works is we build a message of unsigned chars
+                // and push unsigned ints into. This creates a packet of bytes
+                // that will then be sent to the chosen midiout port
                 std::vector<unsigned char> message;
 
+                // A midi message is made up of two parts, the command bits
+                // and the parameter bits
                 unsigned int command = midifile[track][event[track]][0];
                 std::cout << command << '\t';
                 message.push_back(command);
 
+                // A midi message can have one or two parameters
+                // Most messages have two parameters unless it is a
+                // Program Change message in which case their is only one
                 unsigned int arg1 = midifile[track][event[track]][1];
                 std::cout << arg1 << '\t';
                 message.push_back(arg1);
@@ -136,6 +164,8 @@ int main(int argc, char* argv[]) {
 
                 // Print note names
                 if(midifile[track][event[track]].isNoteOn()) {
+                    // Setting the cursor position requires some math to make enough room for
+                    // two characters per note name
                     Cursor.setPosition(Cursor.getX() + ((arg1-21) * 2), track + cursor_offset);
                     std::string note_letter = "AaBCcDdEFfGg";
                     std::cout << note_letter[(arg1-21) % 12] << (int)(((arg1-21)/12)+1);
@@ -152,7 +182,7 @@ int main(int argc, char* argv[]) {
                     exit(EXIT_FAILURE);
                 }
 
-                // Check if command is end of track
+                // Check if command is end of track "EOT"
                 if(midifile[track][event[track]].isEndOfTrack()) eot[track] = true;
 
                 ++event[track];
